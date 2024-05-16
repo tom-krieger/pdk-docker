@@ -1,28 +1,32 @@
-FROM ubuntu:jammy-20230126
-
-WORKDIR /root
-
-ADD install-pdk-release.sh .
-ADD install-onceover.sh .
-ADD pdk-release.env .
+FROM ruby:3.0.6-bullseye
 
 RUN apt-get update && \
-    apt-get install -y curl openssh-client && \
-    ./install-pdk-release.sh && \
-    ./install-onceover.sh && \
-    apt-get purge -y curl && \
+    apt-get -y upgrade && \
+    apt-get install -y curl build-essential cmake openssh-client
+
+# install onceover
+RUN gem install puppet -v 7.27.0
+RUN gem install puppetlabs_spec_helper -v 6.0.1
+RUN gem install rspec-puppet -v 3.0.0
+RUN gem install --no-document onceover
+RUN gem install --no-document onceover-codequality
+RUN gem install --no-document onceover-octocatalog-diff
+RUN gem install --no-document onceover-lookup
+RUN gem install --no-document pry
+RUN gem install --no-document ra10ke
+RUN gem install --no-document rest-client
+RUN gem install --no-document hiera-eyaml
+RUN gem install --no-document toml
+RUN gem install --no-document toml-rb
+RUN gem uninstall rspec-puppet -v 4.0.1
+
+RUN apt-get purge -y curl  && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 
-# Prep a module to make sure we have all of
-# the required dependencies.
-RUN pdk new module docker --skip-interview && \
-    cd docker && \
-    pdk new class test && \
-    pdk validate
+RUN mkdir /root/.ssh
+ADD ssh-config /root/.ssh/config
+ADD id_rsa /root/.ssh/id_rsa
+RUN chmod 600 /root/.ssh/id_rsa
 
-ENV PATH="${PATH}:/opt/puppetlabs/pdk/private/git/bin"
-ENV PDK_DISABLE_ANALYTICS=true
-ENV LANG=C.UTF-8
-
-ENTRYPOINT ["/opt/puppetlabs/pdk/bin/pdk"]
+CMD /bin/bash
